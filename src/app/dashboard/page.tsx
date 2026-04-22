@@ -122,12 +122,20 @@ export default function DashboardPage() {
         >
           Fundamentals
         </Link>
-        <Link
-          href="/trainer"
-          className="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          Continue Training
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/solver"
+            className="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            GTO Solver
+          </Link>
+          <Link
+            href="/trainer"
+            className="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Continue Training
+          </Link>
+        </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-8 space-y-8">

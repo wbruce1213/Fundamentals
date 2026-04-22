@@ -38,27 +38,29 @@ export function CoachPanel({ state, lastVerdict, lastAction }: CoachPanelProps) 
       })()
     : undefined;
 
-  // Keep a ref to the latest handContext so the transport closure always
-  // reads the current value without needing to recreate the transport
-  // (which would reset the message history).
+  // Always read the latest handContext at send time, not at transport construction.
   const handContextRef = useRef(handContext);
   handContextRef.current = handContext;
 
+  // body is a function — the SDK's resolve() calls it on every request,
+  // so handContextRef.current is always the value at send time.
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/coach",
-        // body is evaluated per-request via a getter closure
-        get body() {
-          return { handContext: handContextRef.current };
-        },
+        body: () => ({ handContext: handContextRef.current }),
       }),
-    [] // create once; closure keeps body live via ref
+    []
   );
 
   const { messages, sendMessage, status, setMessages } = useChat({ transport });
 
   const isLoading = status === "streaming" || status === "submitted";
+
+  const send = (text: string) => {
+    if (!text.trim() || isLoading) return;
+    sendMessage({ text });
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -72,7 +74,7 @@ export function CoachPanel({ state, lastVerdict, lastAction }: CoachPanelProps) 
     if (!input?.value.trim() || isLoading) return;
     const text = input.value.trim();
     input.value = "";
-    sendMessage({ text });
+    send(text);
   };
 
   return (
@@ -140,12 +142,7 @@ export function CoachPanel({ state, lastVerdict, lastAction }: CoachPanelProps) 
                     ].map((prompt) => (
                       <button
                         key={prompt}
-                        onClick={() => {
-                          if (inputRef.current) {
-                            inputRef.current.value = prompt;
-                            inputRef.current.focus();
-                          }
-                        }}
+                        onClick={() => send(prompt)}
                         className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:text-foreground"
                       >
                         {prompt}
