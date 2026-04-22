@@ -1,23 +1,21 @@
 "use client";
 
-import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PlayingCard } from "./PlayingCard";
-import type { HandHistoryEntry, HandState, Player, StreetAction } from "@/lib/game/types";
+import type { HandState, Player } from "@/lib/game/types";
 import { getVisibleBoard } from "@/lib/game/state-machine";
 
-// Counterclockwise seating order (standard online poker client convention).
-// Index 0 is hero's visual seat (bottom). Rotation is calculated per-hand.
+// Counterclockwise seating order (standard online poker convention).
+// Hero always maps to visual seat 0 (bottom); rotation is computed per-hand.
 const CCW_ORDER = ["BTN", "SB", "BB", "LJ", "HJ", "CO"] as const;
 
-// The 6 visual seats, counterclockwise from the bottom (hero always at 0).
 const VISUAL_SEATS: { style: React.CSSProperties; cardsAbove: boolean }[] = [
-  { style: { bottom: "4%",  left: "50%",  transform: "translateX(-50%)" }, cardsAbove: false }, // 0 bottom
-  { style: { bottom: "20%", left: "4%"  },                                  cardsAbove: false }, // 1 lower-left
-  { style: { top:    "18%", left: "4%"  },                                  cardsAbove: true  }, // 2 upper-left
-  { style: { top:    "4%",  left: "50%", transform: "translateX(-50%)" },   cardsAbove: true  }, // 3 top
-  { style: { top:    "18%", right: "4%" },                                  cardsAbove: true  }, // 4 upper-right
-  { style: { bottom: "20%", right: "4%" },                                  cardsAbove: false }, // 5 lower-right
+  { style: { bottom: "4%",  left: "50%", transform: "translateX(-50%)" }, cardsAbove: false }, // 0 bottom  (hero)
+  { style: { bottom: "20%", left: "4%"  },                                 cardsAbove: false }, // 1 lower-left
+  { style: { top:    "18%", left: "4%"  },                                 cardsAbove: true  }, // 2 upper-left
+  { style: { top:    "4%",  left: "50%", transform: "translateX(-50%)" },  cardsAbove: true  }, // 3 top
+  { style: { top:    "18%", right: "4%" },                                 cardsAbove: true  }, // 4 upper-right
+  { style: { bottom: "20%", right: "4%" },                                 cardsAbove: false }, // 5 lower-right
 ];
 
 const ARCHETYPE_STYLES: Record<string, { dot: string; label: string }> = {
@@ -27,20 +25,16 @@ const ARCHETYPE_STYLES: Record<string, { dot: string; label: string }> = {
   Hero: { dot: "bg-emerald-500", label: "text-emerald-700"},
 };
 
-// ─── Chip stack ──────────────────────────────────────────────────────────────
-
-function Chips({
-  amount,
-  bigBlind,
-  color = "emerald",
-}: {
+function Chips({ amount, bigBlind, color = "emerald" }: {
   amount: number;
   bigBlind: number;
   color?: "emerald" | "zinc";
 }) {
   if (amount <= 0) return null;
   const count = Math.min(5, Math.ceil(amount / bigBlind / 6) + 1);
-  const bg = color === "emerald" ? "bg-emerald-500 border-emerald-700" : "bg-zinc-500 border-zinc-600";
+  const bg = color === "emerald"
+    ? "bg-emerald-500 border-emerald-700"
+    : "bg-zinc-500 border-zinc-600";
   return (
     <div className="flex flex-col items-center gap-0.5 py-0.5">
       <div className="relative" style={{ width: 18, height: 8 + count * 4 }}>
@@ -52,18 +46,14 @@ function Chips({
           />
         ))}
       </div>
-      <span
-        className={`font-card text-[9px] font-semibold leading-tight ${
-          color === "emerald" ? "text-emerald-700" : "text-zinc-600"
-        }`}
-      >
+      <span className={`font-card text-[9px] font-semibold leading-tight ${
+        color === "emerald" ? "text-emerald-700" : "text-zinc-600"
+      }`}>
         {(amount / bigBlind).toFixed(1)}bb
       </span>
     </div>
   );
 }
-
-// ─── Seat ─────────────────────────────────────────────────────────────────────
 
 type SeatProps = {
   player: Player;
@@ -96,7 +86,7 @@ function Seat({ player, isActive, isShowdown, cardsAbove, bigBlind }: SeatProps)
 
   const chip = (
     <div
-      className={`rounded-lg border px-2 py-1.5 text-center shadow-sm min-w-[58px] transition-colors ${
+      className={`rounded-lg border px-2 py-1.5 text-center shadow-sm min-w-[56px] transition-colors ${
         isActive ? "border-emerald-400 bg-emerald-50" : "border-zinc-200 bg-white"
       } ${player.isFolded ? "border-dashed" : ""}`}
     >
@@ -109,25 +99,21 @@ function Seat({ player, isActive, isShowdown, cardsAbove, bigBlind }: SeatProps)
           <span className="rounded bg-emerald-500 px-1 text-[8px] font-bold text-white">YOU</span>
         )}
       </div>
-      <div className="text-[11px] font-medium text-zinc-700 leading-tight mt-0.5">{player.name}</div>
-      <div className="font-card text-[10px] text-zinc-400">{(player.stack / bigBlind).toFixed(0)}bb</div>
-      {player.isFolded  && <div className="text-[9px] text-zinc-400 mt-0.5">FOLDED</div>}
-      {player.isAllIn   && <div className="text-[9px] font-semibold text-amber-600 mt-0.5">ALL IN</div>}
+      <div className="font-card text-[10px] text-zinc-400 leading-tight">
+        {(player.stack / bigBlind).toFixed(0)}bb
+      </div>
+      {player.isFolded && <div className="text-[9px] text-zinc-400 mt-0.5">FOLDED</div>}
+      {player.isAllIn  && <div className="text-[9px] font-semibold text-amber-600 mt-0.5">ALL IN</div>}
     </div>
   );
 
+  // No animation on the active-player indicator — just a border change is enough
   return (
-    <motion.div
-      className={`flex flex-col items-center gap-1 ${player.isFolded ? "opacity-30" : ""}`}
-      animate={isActive ? { scale: [1, 1.04, 1] } : { scale: 1 }}
-      transition={{ duration: 0.45, repeat: isActive ? Infinity : 0, repeatDelay: 0.7 }}
-    >
+    <div className={`flex flex-col items-center gap-1 ${player.isFolded ? "opacity-30" : ""}`}>
       {cardsAbove ? <>{cards}{chip}{betChips}</> : <>{betChips}{chip}{cards}</>}
-    </motion.div>
+    </div>
   );
 }
-
-// ─── Board ────────────────────────────────────────────────────────────────────
 
 function Board({ cards, phase }: { cards: ReturnType<typeof getVisibleBoard>; phase: string }) {
   return (
@@ -137,10 +123,7 @@ function Board({ cards, phase }: { cards: ReturnType<typeof getVisibleBoard>; ph
           {cards.map((card, i) => (
             <PlayingCard
               key={`${card.rank}${card.suit}`}
-              card={card}
-              size="md"
-              animate
-              delay={i * 0.06}
+              card={card} size="md" animate delay={i * 0.06}
             />
           ))}
         </AnimatePresence>
@@ -159,8 +142,6 @@ function Board({ cards, phase }: { cards: ReturnType<typeof getVisibleBoard>; ph
   );
 }
 
-// ─── Pot ──────────────────────────────────────────────────────────────────────
-
 function PotDisplay({ pot, bigBlind }: { pot: number; bigBlind: number }) {
   return (
     <div className="flex items-center gap-2 mb-1">
@@ -169,88 +150,9 @@ function PotDisplay({ pot, bigBlind }: { pot: number; bigBlind: number }) {
   );
 }
 
-// ─── Hand history panel ───────────────────────────────────────────────────────
-
-function actionLabel(a: StreetAction, players: Player[], bigBlind: number): string {
-  const pos = players.find((p) => p.id === a.playerId)?.position ?? "?";
-  let verb = "";
-  switch (a.action.type) {
-    case "fold":  verb = "folds"; break;
-    case "check": verb = "checks"; break;
-    case "call":  verb = "calls"; break;
-    case "bet":   verb = `bets ${(a.action.amount / bigBlind).toFixed(1)}bb`; break;
-    case "raise": verb = `raises to ${(a.action.amount / bigBlind).toFixed(1)}bb`; break;
-    case "allin": verb = "all-in"; break;
-  }
-  return `${pos}: ${verb}`;
-}
-
-function HandHistory({
-  handHistory,
-  streetActions,
-  currentPhase,
-  players,
-  bigBlind,
-}: {
-  handHistory: HandHistoryEntry[];
-  streetActions: StreetAction[];
-  currentPhase: string;
-  players: Player[];
-  bigBlind: number;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Combine completed streets + current street
-  const allStreets: { phase: string; actions: StreetAction[] }[] = [
-    ...handHistory,
-    ...(streetActions.length > 0 ? [{ phase: currentPhase, actions: streetActions }] : []),
-  ];
-
-  if (allStreets.every((s) => s.actions.length === 0)) return null;
-
-  return (
-    <div className="absolute top-2 left-2 z-10 w-44 rounded-lg border border-zinc-200 bg-white/90 shadow-sm backdrop-blur-sm text-[11px]">
-      <div className="border-b border-zinc-100 px-2.5 py-1.5 font-semibold text-zinc-600 text-[10px] uppercase tracking-wide">
-        Hand History
-      </div>
-      <div
-        ref={scrollRef}
-        className="overflow-y-auto px-2.5 py-1.5 space-y-2"
-        style={{ maxHeight: 220 }}
-      >
-        {allStreets.map((street, si) => (
-          <div key={si}>
-            <div className="font-semibold text-zinc-400 uppercase tracking-wide text-[9px] mb-0.5">
-              {street.phase}
-            </div>
-            {street.actions.map((a, ai) => {
-              const isLast =
-                si === allStreets.length - 1 && ai === street.actions.length - 1;
-              return (
-                <div
-                  key={ai}
-                  className={`font-card leading-relaxed ${
-                    isLast ? "text-zinc-800 font-medium" : "text-zinc-500"
-                  }`}
-                >
-                  {actionLabel(a, players, bigBlind)}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Main export ──────────────────────────────────────────────────────────────
-
 export function TableLayout({ state }: { state: HandState }) {
   const board = getVisibleBoard(state);
   const isShowdown = state.phase === "showdown";
-
-  // Rotate seats so the hero is always at the bottom (visual seat 0).
   const heroPos = state.heroPosition;
   const heroIdx = CCW_ORDER.indexOf(heroPos as typeof CCW_ORDER[number]);
 
@@ -260,18 +162,14 @@ export function TableLayout({ state }: { state: HandState }) {
         className="relative w-full"
         style={{ maxWidth: "760px", aspectRatio: "16/9", maxHeight: "100%" }}
       >
-        {/* Outer rim */}
         <div className="absolute inset-[10%] rounded-[50%] border-[3px] border-zinc-300 bg-zinc-100" />
-        {/* Inner felt */}
         <div className="absolute inset-[13%] rounded-[50%] bg-zinc-50 border border-zinc-200" />
 
-        {/* Center: pot + board */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
           <PotDisplay pot={state.pot} bigBlind={state.bigBlindSize} />
           <Board cards={board} phase={state.phase} />
         </div>
 
-        {/* Seats — rotated so hero is always at visual seat 0 (bottom) */}
         {CCW_ORDER.map((pos, posIdx) => {
           const player = state.players.find((p) => p.position === pos);
           if (!player) return null;
@@ -290,15 +188,6 @@ export function TableLayout({ state }: { state: HandState }) {
             </div>
           );
         })}
-
-        {/* Hand history — top-left overlay */}
-        <HandHistory
-          handHistory={state.handHistory}
-          streetActions={state.streetActions}
-          currentPhase={state.phase}
-          players={state.players}
-          bigBlind={state.bigBlindSize}
-        />
       </div>
     </div>
   );
