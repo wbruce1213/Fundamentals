@@ -1,0 +1,94 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions         Session[]
+  hands            Hand[]
+  conceptMasteries ConceptMastery[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  user  User   @relation(fields: [userId], references: [id])
+  hands Hand[]
+
+  @@map("sessions")
+}
+
+model Hand {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String
+  createdAt DateTime @default(now())
+
+  position     String // BTN, CO, HJ, LJ, SB, BB
+  heroCards    String // e.g. "As Kh"
+  boardCards   String @default("") // e.g. "2c 7d Jh Ts 3s"
+  street       String // preflop, flop, turn, river
+  potSize      Int
+  heroStack    Int
+  villainStack Int
+
+  // Decision data
+  action     String // fold, check, call, bet, raise
+  sizingBB   Float? // bet/raise size in BBs
+  verdict    String? // optimal, acceptable, mistake, blunder
+  rating     Int? // 0-100
+  betterAction String?
+  primaryReason String?
+  secondaryConsiderations String[] @default([])
+  conceptTags String[] @default([])
+
+  // Opponent context (serialized JSON)
+  opponents String @default("[]")
+
+  replayed Boolean @default(false)
+
+  user    User    @relation(fields: [userId], references: [id])
+  session Session @relation(fields: [sessionId], references: [id])
+
+  @@map("hands")
+}
+
+model ConceptMastery {
+  id        String   @id @default(cuid())
+  userId    String
+  concept   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // FSRS fields
+  stability   Float  @default(0)
+  difficulty  Float  @default(0.3)
+  elapsedDays Int    @default(0)
+  scheduledDays Int  @default(0)
+  reps        Int    @default(0)
+  lapses      Int    @default(0)
+  state       Int    @default(0) // 0=New, 1=Learning, 2=Review, 3=Relearning
+  lastReview  DateTime?
+  dueDate     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, concept])
+  @@map("concept_masteries")
+}
