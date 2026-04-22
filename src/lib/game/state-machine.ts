@@ -10,7 +10,11 @@ import type {
   StreetAction,
 } from "./types";
 
-const POSITIONS_6MAX: Position[] = ["BTN", "CO", "HJ", "LJ", "SB", "BB"];
+// Clockwise table order starting from SB.
+// nextActivePlayerIndex increments by 1, so this order must match
+// the real action sequence: preflop LJ→HJ→CO→BTN→SB→BB,
+// postflop SB→BB→LJ→HJ→CO→BTN.
+const POSITIONS_6MAX: Position[] = ["SB", "BB", "LJ", "HJ", "CO", "BTN"];
 const BOT_ARCHETYPES: BotArchetype[] = ["Reg", "Fish", "LAG"];
 const BOT_NAMES: Record<BotArchetype, string[]> = {
   Reg: ["Marcus", "Taylor", "Jordan", "Alex"],
@@ -34,7 +38,6 @@ function randomArchetype(): BotArchetype {
 
 export function createNewHand(heroPosition?: Position): HandState {
   const pos = heroPosition ?? POSITIONS_6MAX[Math.floor(Math.random() * 6)];
-  const heroPositionIdx = POSITIONS_6MAX.indexOf(pos);
 
   const deck = shuffle(buildDeck());
   let remaining = deck;

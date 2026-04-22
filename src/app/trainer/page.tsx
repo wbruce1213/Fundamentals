@@ -65,27 +65,28 @@ export default function TrainerPage() {
           </div>
         </header>
 
-        {/* Table */}
-        <div className="relative flex-1 overflow-hidden">
+        {/* Table + action area */}
+        <div className="relative flex flex-1 flex-col overflow-hidden min-h-0">
           {!hand ? (
             <div className="flex h-full items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="flex h-full flex-col">
-              <div className="flex-1 p-4">
+            <>
+              {/* Table fills remaining space above the action bar */}
+              <div className="flex-1 min-h-0 p-4">
                 <TableLayout state={hand} />
               </div>
 
-              {/* Action bar or status */}
-              <div className="px-6 pb-6">
+              {/* Action bar — fixed height at bottom */}
+              <div className="shrink-0 px-6 pb-5 pt-2">
                 {isComplete ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="text-sm text-muted-foreground">
                       {hand.winner === "hero"
                         ? "You win the pot."
                         : hand.phase === "showdown"
-                        ? "Showdown"
+                        ? "Showdown — cards revealed"
                         : "Hand complete."}
                     </div>
                     <button
@@ -96,7 +97,7 @@ export default function TrainerPage() {
                     </button>
                   </div>
                 ) : !awaitingHero ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex h-12 items-center justify-center gap-2 text-sm text-muted-foreground">
                     {isThinking && (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -107,9 +108,9 @@ export default function TrainerPage() {
                     )}
                   </div>
                 ) : isGrading ? (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex h-12 items-center justify-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>Grading decision…</span>
+                    <span>Grading…</span>
                   </div>
                 ) : (
                   <ActionBar
@@ -120,18 +121,20 @@ export default function TrainerPage() {
                   />
                 )}
               </div>
-            </div>
+            </>
           )}
 
-          {/* Feedback toast overlay */}
-          <div className="absolute bottom-32 right-4 z-20">
+          {/* Feedback toast — anchored above action bar */}
+          <div className="pointer-events-none absolute bottom-28 right-4 z-20">
             <AnimatePresence>
               {verdict && (
-                <FeedbackToast
-                  key="feedback"
-                  result={verdict}
-                  onDismiss={dismissVerdict}
-                />
+                <div className="pointer-events-auto">
+                  <FeedbackToast
+                    key="feedback"
+                    result={verdict}
+                    onDismiss={dismissVerdict}
+                  />
+                </div>
               )}
             </AnimatePresence>
           </div>

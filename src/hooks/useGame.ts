@@ -117,6 +117,7 @@ export function useGame() {
   });
 
   const botTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isBotThinkingRef = useRef(false);
 
   // Initialize identity on mount
   useEffect(() => {
@@ -128,6 +129,8 @@ export function useGame() {
   }, []);
 
   const dealNewHand = useCallback(() => {
+    isBotThinkingRef.current = false;
+    if (botTimerRef.current) clearTimeout(botTimerRef.current);
     const hand = createNewHand();
     setState((s) => ({
       ...s,
@@ -138,21 +141,26 @@ export function useGame() {
     }));
   }, []);
 
-  // Auto-advance bots when it's not hero's turn
+  // Auto-advance bots when it's not hero's turn.
+  // Uses a ref to gate re-entry — NOT state.isThinking — so setting isThinking:true
+  // doesn't re-run this effect and cancel its own timer.
   useEffect(() => {
     const hand = state.hand;
-    if (!hand || state.isThinking || state.isGrading) return;
+    if (!hand || state.isGrading) return;
     if (hand.awaitingHeroAction) return;
     if (hand.phase === "complete" || hand.phase === "showdown") return;
 
     const active = getActivePlayer(hand);
-    if (!active || active.isFolded || active.isAllIn) return;
+    if (!active || active.isFolded || active.isAllIn || active.isHero) return;
+    if (isBotThinkingRef.current) return;
 
+    isBotThinkingRef.current = true;
     setState((s) => ({ ...s, isThinking: true }));
 
     botTimerRef.current = setTimeout(() => {
+      isBotThinkingRef.current = false;
       setState((s) => {
-        if (!s.hand) return s;
+        if (!s.hand) return { ...s, isThinking: false };
         const currentActive = getActivePlayer(s.hand);
         if (!currentActive || currentActive.isHero) return { ...s, isThinking: false };
 
@@ -168,8 +176,9 @@ export function useGame() {
 
     return () => {
       if (botTimerRef.current) clearTimeout(botTimerRef.current);
+      isBotThinkingRef.current = false;
     };
-  }, [state.hand, state.isThinking, state.isGrading]);
+  }, [state.hand, state.isGrading]);
 
   const heroAct = useCallback(
     async (type: ActionType, amount: number) => {

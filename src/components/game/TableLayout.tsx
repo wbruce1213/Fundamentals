@@ -6,51 +6,45 @@ import type { HandState, Player } from "@/lib/game/types";
 import { getVisibleBoard } from "@/lib/game/state-machine";
 
 const SEAT_POSITIONS = [
-  // BTN = bottom-right, CO = right, HJ = top-right, LJ = top-left, SB = left, BB = bottom-left
-  // Elliptical layout. hero is always BTN for rendering (rotated by position in state).
-  // Positions are percentages [left, top] of the container.
-  { position: "BTN", style: { bottom: "8%", left: "50%", transform: "translateX(-50%)" } },
-  { position: "CO", style: { bottom: "22%", right: "8%" } },
-  { position: "HJ", style: { top: "22%", right: "8%" } },
-  { position: "LJ", style: { top: "22%", left: "8%" } },
-  { position: "SB", style: { bottom: "22%", left: "8%" } },
-  { position: "BB", style: { top: "8%", left: "50%", transform: "translateX(-50%)" } },
+  { position: "BTN", style: { bottom: "6%",  left: "50%",  transform: "translateX(-50%)" } },
+  { position: "CO",  style: { bottom: "20%", right: "6%" } },
+  { position: "HJ",  style: { top: "20%",    right: "6%" } },
+  { position: "LJ",  style: { top: "20%",    left: "6%" } },
+  { position: "SB",  style: { bottom: "20%", left: "6%" } },
+  { position: "BB",  style: { top: "6%",     left: "50%", transform: "translateX(-50%)" } },
 ];
+
+const ARCHETYPE_STYLES: Record<string, { dot: string; label: string }> = {
+  Reg:  { dot: "bg-blue-500",    label: "text-blue-700" },
+  Fish: { dot: "bg-amber-400",   label: "text-amber-700" },
+  LAG:  { dot: "bg-orange-500",  label: "text-orange-700" },
+  Hero: { dot: "bg-emerald-500", label: "text-emerald-700" },
+};
 
 type SeatProps = {
   player: Player;
   isActive: boolean;
   isHero: boolean;
+  isShowdown: boolean;
   bigBlind: number;
 };
 
-function Seat({ player, isActive, isHero, bigBlind }: SeatProps) {
-  const archetypeColors: Record<string, string> = {
-    Reg: "text-blue-400",
-    Fish: "text-yellow-400",
-    LAG: "text-orange-400",
-    Hero: "text-[oklch(0.72_0.17_145)]",
-  };
-  const archetypeColor =
-    archetypeColors[player.archetype] ?? "text-muted-foreground";
+function Seat({ player, isActive, isHero, isShowdown, bigBlind }: SeatProps) {
+  const style = ARCHETYPE_STYLES[player.archetype] ?? ARCHETYPE_STYLES.Reg;
+  // Show cards face-up for hero always, and for all non-folded players at showdown
+  const showFaceUp = (isHero || isShowdown) && !player.isFolded && player.holeCards;
 
   return (
     <motion.div
-      className={`flex flex-col items-center gap-1 ${player.isFolded ? "opacity-30" : ""}`}
-      animate={isActive ? { scale: [1, 1.03, 1] } : { scale: 1 }}
-      transition={{ duration: 0.4, repeat: isActive ? Infinity : 0, repeatDelay: 0.8 }}
+      className={`flex flex-col items-center gap-1 transition-opacity ${player.isFolded ? "opacity-25" : ""}`}
+      animate={isActive ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+      transition={{ duration: 0.45, repeat: isActive ? Infinity : 0, repeatDelay: 0.7 }}
     >
-      {/* Cards */}
-      <div className="flex gap-0.5 mb-0.5">
-        {player.isHero && player.holeCards ? (
-          player.holeCards.map((card, i) => (
-            <PlayingCard
-              key={i}
-              card={card}
-              size="sm"
-              animate
-              delay={i * 0.08}
-            />
+      {/* Hole cards */}
+      <div className="flex gap-0.5">
+        {showFaceUp ? (
+          player.holeCards!.map((card, i) => (
+            <PlayingCard key={i} card={card} size="sm" animate delay={i * 0.08} />
           ))
         ) : (
           <>
@@ -60,55 +54,53 @@ function Seat({ player, isActive, isHero, bigBlind }: SeatProps) {
         )}
       </div>
 
-      {/* Seat info chip */}
+      {/* Seat chip */}
       <div
-        className={`rounded-md border px-2 py-1 text-center transition-colors ${
+        className={`rounded-lg border px-2.5 py-1.5 text-center shadow-sm transition-all ${
           isActive
-            ? "border-[oklch(0.72_0.17_145)] bg-[oklch(0.72_0.17_145)]/10"
-            : "border-border bg-card"
+            ? "border-emerald-400 bg-emerald-50 shadow-emerald-100"
+            : "border-zinc-200 bg-white"
         } ${player.isFolded ? "border-dashed" : ""}`}
       >
-        <div className="flex items-center gap-1.5">
-          <span className={`text-[10px] font-medium ${archetypeColor}`}>
+        <div className="flex items-center justify-center gap-1 mb-0.5">
+          <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+          <span className={`text-[10px] font-semibold uppercase tracking-wide ${style.label}`}>
             {player.position}
           </span>
           {isHero && (
-            <span className="rounded-[2px] bg-[oklch(0.72_0.17_145)] px-1 text-[9px] font-semibold text-black">
+            <span className="rounded bg-emerald-500 px-1 text-[8px] font-bold text-white leading-tight">
               YOU
             </span>
           )}
         </div>
-        <div className="text-[11px] font-medium text-foreground leading-tight">
+
+        <div className="text-[11px] font-medium text-zinc-700 leading-tight">
           {player.name}
         </div>
-        <div className="font-card text-[10px] text-muted-foreground leading-tight">
+        <div className="font-card text-[10px] text-zinc-400 leading-tight">
           {(player.stack / bigBlind).toFixed(0)}bb
         </div>
+
         {player.currentBet > 0 && (
-          <div className="font-card text-[10px] text-[oklch(0.72_0.17_145)]">
-            bet: {(player.currentBet / bigBlind).toFixed(1)}bb
+          <div className="font-card text-[10px] text-emerald-600 font-medium">
+            {(player.currentBet / bigBlind).toFixed(1)}bb
           </div>
         )}
         {player.isFolded && (
-          <div className="text-[9px] text-muted-foreground/60">FOLD</div>
+          <div className="text-[9px] text-zinc-400 tracking-wide">FOLDED</div>
         )}
         {player.isAllIn && (
-          <div className="text-[9px] text-[oklch(0.75_0.13_88)]">ALL IN</div>
+          <div className="text-[9px] font-semibold text-amber-600">ALL IN</div>
         )}
       </div>
     </motion.div>
   );
 }
 
-type BoardProps = {
-  cards: ReturnType<typeof getVisibleBoard>;
-  phase: string;
-};
-
-function Board({ cards, phase }: BoardProps) {
+function Board({ cards, phase }: { cards: ReturnType<typeof getVisibleBoard>; phase: string }) {
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="flex gap-1.5 items-center">
+      <div className="flex gap-2 items-center">
         <AnimatePresence mode="popLayout">
           {cards.map((card, i) => (
             <PlayingCard
@@ -120,90 +112,76 @@ function Board({ cards, phase }: BoardProps) {
             />
           ))}
         </AnimatePresence>
-        {/* Placeholder slots */}
         {Array.from({ length: Math.max(0, 5 - cards.length) }).map((_, i) => (
           <div
-            key={`placeholder-${i}`}
-            className="w-12 rounded-[4px] border border-dashed border-border/40"
+            key={`ph-${i}`}
+            className="w-12 rounded-[4px] border border-dashed border-zinc-300 bg-zinc-50/60"
             style={{ aspectRatio: "2.5/3.5" }}
           />
         ))}
       </div>
       {phase !== "preflop" && (
-        <span className="font-card text-[10px] uppercase tracking-widest text-muted-foreground/60">
-          {phase}
+        <span className="font-card text-[10px] uppercase tracking-widest text-zinc-400">
+          {phase === "showdown" ? "showdown" : phase}
         </span>
       )}
     </div>
   );
 }
 
-type PotDisplayProps = {
-  pot: number;
-  bigBlind: number;
-};
-
-function PotDisplay({ pot, bigBlind }: PotDisplayProps) {
+function PotDisplay({ pot, bigBlind }: { pot: number; bigBlind: number }) {
   return (
-    <div className="flex flex-col items-center">
-      <div className="font-card text-sm font-medium text-foreground">
+    <div className="flex flex-col items-center mb-1">
+      <div className="font-card text-sm font-semibold text-zinc-700">
         {(pot / bigBlind).toFixed(1)}bb
       </div>
-      <div className="text-[10px] text-muted-foreground">pot</div>
+      <div className="text-[10px] text-zinc-400 uppercase tracking-wide">pot</div>
     </div>
   );
 }
 
-type TableLayoutProps = {
-  state: HandState;
-};
-
-export function TableLayout({ state }: TableLayoutProps) {
+export function TableLayout({ state }: { state: HandState }) {
   const board = getVisibleBoard(state);
-  const heroIdx = state.players.findIndex((p) => p.isHero);
+  const isShowdown = state.phase === "showdown";
 
   return (
-    <div className="relative w-full" style={{ paddingBottom: "56.25%" /* 16:9 */ }}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {/* Table ellipse */}
-        <div
-          className="relative w-full h-full max-w-3xl mx-auto"
-          style={{ maxHeight: "480px" }}
-        >
-          {/* Felt area — schematic ellipse, no green felt per spec */}
-          <div
-            className="absolute inset-[12%] rounded-[50%] border border-border bg-card/40"
-            style={{ borderWidth: "1px" }}
-          />
+    // Fill the parent height, don't use the paddingBottom aspect-ratio hack which overflows
+    <div className="relative w-full h-full flex items-center justify-center">
+      <div
+        className="relative w-full"
+        // Constrain so the table never taller than the available space.
+        // The inner ellipse uses percentage-based insets so it scales naturally.
+        style={{ maxWidth: "720px", aspectRatio: "16/9", maxHeight: "100%" }}
+      >
+        {/* Outer rim */}
+        <div className="absolute inset-[10%] rounded-[50%] border-[3px] border-zinc-300 bg-zinc-100" />
 
-          {/* Center: board + pot */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-            <PotDisplay pot={state.pot} bigBlind={state.bigBlindSize} />
-            <Board cards={board} phase={state.phase} />
-          </div>
+        {/* Inner felt surface */}
+        <div className="absolute inset-[13%] rounded-[50%] bg-zinc-50 border border-zinc-200" />
 
-          {/* Player seats */}
-          {SEAT_POSITIONS.map(({ position, style }) => {
-            const player = state.players.find((p) => p.position === position);
-            if (!player) return null;
-            const isActive =
-              state.players[state.activePlayerIndex]?.id === player.id;
-            return (
-              <div
-                key={position}
-                className="absolute"
-                style={style as React.CSSProperties}
-              >
-                <Seat
-                  player={player}
-                  isActive={isActive}
-                  isHero={player.isHero}
-                  bigBlind={state.bigBlindSize}
-                />
-              </div>
-            );
-          })}
+        {/* Center: pot + board */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+          <PotDisplay pot={state.pot} bigBlind={state.bigBlindSize} />
+          <Board cards={board} phase={state.phase} />
         </div>
+
+        {/* Seats */}
+        {SEAT_POSITIONS.map(({ position, style }) => {
+          const player = state.players.find((p) => p.position === position);
+          if (!player) return null;
+          const isActive = state.players[state.activePlayerIndex]?.id === player.id;
+          return (
+            <div key={position} className="absolute" style={style as React.CSSProperties}>
+              <Seat
+                player={player}
+                isActive={isActive}
+                isHero={player.isHero}
+                isShowdown={isShowdown}
+                bigBlind={state.bigBlindSize}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

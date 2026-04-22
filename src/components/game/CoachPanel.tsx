@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { ChevronLeft, ChevronRight, SendHorizonal, X } from "lucide-react";
@@ -38,12 +38,25 @@ export function CoachPanel({ state, lastVerdict, lastAction }: CoachPanelProps) 
       })()
     : undefined;
 
-  const { messages, sendMessage, status, setMessages } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/coach",
-      body: { handContext },
-    }),
-  });
+  // Keep a ref to the latest handContext so the transport closure always
+  // reads the current value without needing to recreate the transport
+  // (which would reset the message history).
+  const handContextRef = useRef(handContext);
+  handContextRef.current = handContext;
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/coach",
+        // body is evaluated per-request via a getter closure
+        get body() {
+          return { handContext: handContextRef.current };
+        },
+      }),
+    [] // create once; closure keeps body live via ref
+  );
+
+  const { messages, sendMessage, status, setMessages } = useChat({ transport });
 
   const isLoading = status === "streaming" || status === "submitted";
 

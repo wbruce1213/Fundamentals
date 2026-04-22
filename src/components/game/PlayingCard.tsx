@@ -10,12 +10,12 @@ const SUIT_SYMBOLS: Record<string, string> = {
   c: "♣",
 };
 
-// Muted red for hearts/diamonds per spec
+// Spades/clubs black, hearts/diamonds a saturated-but-not-garish red
 const SUIT_COLORS: Record<string, string> = {
-  s: "text-foreground",
-  h: "text-[oklch(0.58_0.18_22)]",
-  d: "text-[oklch(0.58_0.18_22)]",
-  c: "text-foreground",
+  s: "text-zinc-900",
+  h: "text-red-600",
+  d: "text-red-600",
+  c: "text-zinc-900",
 };
 
 type CardFaceProps = {
@@ -29,30 +29,20 @@ function CardFace({ card, className = "" }: CardFaceProps) {
 
   return (
     <div
-      className={`relative flex flex-col justify-between rounded-[4px] border border-border bg-card p-1 select-none ${className}`}
+      className={`relative flex flex-col rounded-[4px] border border-zinc-200 bg-white shadow-sm select-none p-1 ${className}`}
       style={{ aspectRatio: "2.5/3.5" }}
     >
-      {/* Top-left rank + suit */}
+      {/* Top-left: rank then suit, stacked */}
       <div className={`flex flex-col items-start leading-none ${suitColor}`}>
-        <span className="font-card text-[11px] font-semibold leading-tight">
+        <span className="font-card text-[11px] font-bold leading-tight">
           {card.rank}
         </span>
         <span className="font-card text-[9px] leading-tight">{symbol}</span>
       </div>
 
       {/* Center pip */}
-      <div className={`flex items-center justify-center text-lg ${suitColor}`}>
-        <span className="font-card">{symbol}</span>
-      </div>
-
-      {/* Bottom-right rank + suit (inverted) */}
-      <div
-        className={`flex flex-col items-end leading-none rotate-180 ${suitColor}`}
-      >
-        <span className="font-card text-[11px] font-semibold leading-tight">
-          {card.rank}
-        </span>
-        <span className="font-card text-[9px] leading-tight">{symbol}</span>
+      <div className={`flex flex-1 items-center justify-center ${suitColor}`}>
+        <span className="font-card text-base leading-none">{symbol}</span>
       </div>
     </div>
   );
@@ -61,10 +51,11 @@ function CardFace({ card, className = "" }: CardFaceProps) {
 function CardBack({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`relative rounded-[4px] border border-border bg-secondary flex items-center justify-center ${className}`}
+      className={`relative rounded-[4px] border border-zinc-300 bg-zinc-100 flex items-center justify-center shadow-sm select-none ${className}`}
       style={{ aspectRatio: "2.5/3.5" }}
     >
-      <div className="rounded-[2px] border border-muted-foreground/30 w-[80%] h-[85%] bg-muted/40" />
+      {/* Simple cross-hatch pattern using nested divs */}
+      <div className="w-[80%] h-[85%] rounded-[2px] border border-zinc-300/60 bg-zinc-200/60" />
     </div>
   );
 }
