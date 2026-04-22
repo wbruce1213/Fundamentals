@@ -98,6 +98,7 @@ export function createNewHand(heroPosition?: Position): HandState {
     smallBlindSize: BIG_BLIND / 2,
     awaitingHeroAction: players[firstToActPreflop].isHero,
     winner: null,
+    handHistory: [],
   };
 }
 
@@ -223,6 +224,10 @@ function advanceStreet(state: HandState): HandState {
     lastAggressorIndex: firstToAct,
     streetActions: [],
     allActions: [...state.allActions, ...state.streetActions],
+    handHistory: [
+      ...state.handHistory,
+      { phase: state.phase, actions: state.streetActions },
+    ],
     awaitingHeroAction: newPlayers[firstToAct].isHero,
   };
 

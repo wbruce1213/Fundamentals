@@ -37,6 +37,11 @@ export type StreetAction = {
   timestamp: number;
 };
 
+export type HandHistoryEntry = {
+  phase: string;
+  actions: StreetAction[];
+};
+
 export type GamePhase =
   | "dealing"
   | "preflop"
@@ -62,6 +67,7 @@ export type HandState = {
   lastAggressorIndex: number;
   streetActions: StreetAction[];
   allActions: StreetAction[]; // full history across streets
+  handHistory: HandHistoryEntry[]; // completed streets, for display
   bigBlindSize: number;
   smallBlindSize: number;
   awaitingHeroAction: boolean;
